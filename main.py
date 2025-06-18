@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, status
 from database_config import get_session
 from models import Empresa, Curso, Estagio, Bolsa, Professor, Plataforma, Endereco
 from sqlalchemy.future import select
+from datetime import datetime
+import os
 from schemas import (
     BolsaBase, 
     BolsaResponse,
@@ -26,6 +28,8 @@ from schemas import (
     UpdateEmpresa,
 )
 app = FastAPI()
+print(f"API REST rodando com PID: {os.getpid()}")
+
 
 async def delete_element(elemento_id: int, model_class):
     async with get_session() as session:
@@ -52,46 +56,59 @@ async def delete_element(elemento_id: int, model_class):
 @app.get("/bolsas", status_code=status.HTTP_200_OK)
 async def get_bolsas():
     async with get_session() as session:
-        resultado = await session.execute(select(Bolsa))
-        item = resultado.scalars().all()
+        try:
+            resultado = await session.execute(select(Bolsa))
+            item = resultado.scalars().all()
 
-        return [BolsaResponse(
-            id=row.id,
-            nome=row.nome,
-            vertente=row.vertente,
-            salario=row.salario,
-            professor_id=row.professor_id,
-            horas_semanais=row.horas_semanais,
-            remunerado=row.remunerado,
-            quantidade_vagas=row.quantidade_vagas,
-            data_inicio=row.data_inicio,
-            data_fim=row.data_fim,
-            descricao=row.descricao
-            ) for row in item]
+            return [BolsaResponse(
+                id=row.id,
+                nome=row.nome,
+                vertente=row.vertente,
+                salario=row.salario,
+                professor_id=row.professor_id,
+                horas_semanais=row.horas_semanais,
+                remunerado=row.remunerado,
+                quantidade_vagas=row.quantidade_vagas,
+                data_inicio=row.data_inicio,
+                data_fim=row.data_fim,
+                descricao=row.descricao
+                ) for row in item]
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"As bolsas não foram encontradas: {str(e)}"
+            )
 
 @app.get("/bolsas/{bolsa_id}", status_code=status.HTTP_200_OK)
 async def get_bolsa_id(bolsa_id: int):
     async with get_session() as session:
-        resultado = await session.get(Bolsa, bolsa_id)
-        if not resultado:
+        try:
+            resultado = await session.get(Bolsa, bolsa_id)
+            if not resultado:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Bolsa não encontrada"
+                )
+
+            return BolsaResponse(
+                id=resultado.id,
+                nome=resultado.nome,
+                vertente=resultado.vertente,
+                salario=resultado.salario,
+                remunerado=resultado.remunerado,
+                horas_semanais=resultado.horas_semanais,
+                quantidade_vagas=resultado.quantidade_vagas,
+                descricao=resultado.descricao,
+                data_inicio=resultado.data_inicio,
+                data_fim=resultado.data_fim,
+                professor_id=resultado.professor_id
+            )
+        except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Bolsa não encontrada"
+                detail=f"A bolsa não foi encontrada: {str(e)}"
             )
-
-        return BolsaResponse(
-            id=resultado.id,
-            nome=resultado.nome,
-            vertente=resultado.vertente,
-            salario=resultado.salario,
-            remunerado=resultado.remunerado,
-            horas_semanais=resultado.horas_semanais,
-            quantidade_vagas=resultado.quantidade_vagas,
-            descricao=resultado.descricao,
-            data_inicio=resultado.data_inicio,
-            data_fim=resultado.data_fim,
-            professor_id=resultado.professor_id
-        )
     
 @app.post("/bolsas", status_code=status.HTTP_201_CREATED)
 async def create_bolsa(input: BolsaBase):
@@ -143,27 +160,33 @@ async def update_bolsa(input: UpdateBolsa, bolsa_id: int):
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Bolsa não encontrada"
                 )
+            else:
+                resultado.nome=resultado.nome if input.nome is None else input.nome
+                resultado.vertente=resultado.vertente if input.vertente is None else input.vertente
+                resultado.salario=resultado.salario if input.salario is None else input.salario
+                resultado.remunerado=resultado.remunerado if input.remunerado is None else input.remunerado
+                resultado.horas_semanais=resultado.horas_semanais if input.horas_semanais is None else input.horas_semanais
+                resultado.quantidade_vagas=resultado.quantidade_vagas if input.quantidade_vagas is None else input.quantidade_vagas
+                resultado.descricao=resultado.descricao if input.descricao is None else input.descricao
+                resultado.data_inicio=resultado.data_inicio if input.data_inicio is None else input.data_inicio,
+                resultado.data_fim=resultado.data_fim if input.data_fim is None else input.data_fim,
+                resultado.professor_id=resultado.professor_id if input.professor_id is None else input.professor_id
+                await session.commit()
+                await session.refresh(resultado)
 
-            input_elementos = input.model_dump()
-            for key, value in input_elementos.items():
-                if key != "id" and value is not None:
-                    setattr(resultado, key, value)
-
-            await session.commit()
-            await session.refresh(resultado)
-            return BolsaResponse(
-                id=resultado.id,
-                nome=resultado.nome,
-                vertente=resultado.vertente,
-                salario=resultado.salario,
-                remunerado=resultado.remunerado,
-                horas_semanais=resultado.horas_semanais,
-                quantidade_vagas=resultado.quantidade_vagas,
-                descricao=resultado.descricao,
-                data_inicio=resultado.data_inicio,
-                data_fim=resultado.data_fim,
-                professor_id=resultado.professor_id
-            )
+                return BolsaResponse(
+                    id=resultado.id,
+                    nome=resultado.nome,
+                    vertente=resultado.vertente,
+                    salario=resultado.salario,
+                    remunerado=resultado.remunerado,
+                    horas_semanais=resultado.horas_semanais,
+                    quantidade_vagas=resultado.quantidade_vagas,
+                    descricao=resultado.descricao,
+                    data_inicio=resultado.data_inicio,
+                    data_fim=resultado.data_fim,
+                    professor_id=resultado.professor_id
+                )
         except Exception as e:
             await session.rollback()
             raise HTTPException(
@@ -261,31 +284,37 @@ async def update_estagio(input: UpdateEstagio, estagio_id: int):
     async with get_session() as session:
         try:
             resultado = await session.get(Estagio, estagio_id)
-            if not resultado:
+            print(resultado)
+            if resultado is None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Estágio não encontrado"
                 )
+            else:
+                resultado.nome=resultado.nome if input.nome is None else input.nome
+                resultado.vertente=resultado.vertente if input.vertente is None else input.vertente
+                resultado.salario=resultado.salario if input.salario is None else input.salario
+                resultado.remunerado=resultado.remunerado if input.remunerado is None else input.remunerado
+                resultado.horas_semanais=resultado.horas_semanais if input.horas_semanais is None else input.horas_semanais
+                resultado.descricao=resultado.descricao if input.descricao is None else input.descricao
+                resultado.data_inicio=resultado.data_inicio if input.data_inicio is None else input.data_inicio,
+                resultado.data_fim=resultado.data_fim if input.data_fim is None else input.data_fim,
+                resultado.empresa_id=resultado.empresa_id if input.empresa_id is None else input.empresa_id
+                await session.commit()
+                await session.refresh(resultado)
 
-            input_elementos = input.model_dump()            
-            for key, value in input_elementos.items():
-                if key != "id" and value is not None:
-                    setattr(resultado, key, value)
-
-            await session.commit()
-            await session.refresh(resultado)
-            return EstagioResponse(
-                id=resultado.id,
-                nome=resultado.nome,
-                vertente=resultado.vertente,
-                salario=resultado.salario,
-                empresa_id=resultado.empresa_id,
-                remunerado=resultado.remunerado,
-                horas_semanais=resultado.horas_semanais,
-                descricao=resultado.descricao,
-                data_inicio=resultado.data_inicio,
-                data_fim=resultado.data_fim
-            )
+                return EstagioResponse(
+                    id=resultado.id,
+                    nome=resultado.nome,
+                    vertente=resultado.vertente,
+                    salario=resultado.salario,
+                    empresa_id=resultado.empresa_id,
+                    remunerado=resultado.remunerado,
+                    horas_semanais=resultado.horas_semanais,
+                    descricao=resultado.descricao,
+                    data_inicio=resultado.data_inicio,
+                    data_fim=resultado.data_fim
+                )
         except Exception as e:
             await session.rollback()
             raise HTTPException(
@@ -376,23 +405,25 @@ async def update_professor(input: UpdateProfessor, professor_id):
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Professor não encontrado"
                 )
+            else:
+                resultado.nome=resultado.nome if input.nome is None else input.nome
+                resultado.vertente=resultado.vertente if input.vertente is None else input.vertente
+                resultado.telefone=resultado.telefone if input.telefone is None else input.telefone
+                resultado.email=resultado.email if input.email is None else input.email
+                resultado.website=resultado.website if input.website is None else input.website
+                resultado.formacao=resultado.formacao if input.formacao is None else input.formacao
+                await session.commit()
+                await session.refresh(resultado)
 
-            input_elementos = input.model_dump()
-            for key, value in input_elementos.items():
-                if key != "id" and value is not None:
-                    setattr(resultado, key, value)
-
-            await session.commit()
-            await session.refresh(resultado)
-            return ProfessorResponse(
-                id=resultado.id,
-                nome=resultado.nome,
-                vertente=resultado.vertente,
-                telefone=resultado.telefone,
-                email=resultado.email,
-                website=resultado.website,
-                formacao=resultado.formacao
-            )
+                return ProfessorResponse(
+                    id=resultado.id,
+                    nome=resultado.nome,
+                    vertente=resultado.vertente,
+                    telefone=resultado.telefone,
+                    email=resultado.email,
+                    website=resultado.website,
+                    formacao=resultado.formacao
+                )
         except Exception as e:
             await session.rollback()
             raise HTTPException(
@@ -492,25 +523,29 @@ async def update_empresa(input: UpdateEmpresa, empresa_id):
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Empresa não encontrada"
                 )
+            else:
+                resultado.nome=resultado.nome if input.nome is None else input.nome
+                resultado.vertente=resultado.vertente if input.vertente is None else input.vertente
+                resultado.CNPJ=resultado.CNPJ if input.CNPJ is None else input.CNPJ
+                resultado.endereco_id=resultado.endereco_id if input.endereco_id is None else input.endereco_id
+                resultado.telefone=resultado.telefone if input.telefone is None else input.telefone
+                resultado.email=resultado.email if input.email is None else input.email
+                resultado.website=resultado.website if input.website is None else input.website
+                resultado.status=resultado.status if input.status is None else input.status
+                await session.commit()
+                await session.refresh(resultado)
 
-            input_elementos = input.model_dump()
-            for key, value in input_elementos.items():
-                if key != "id" and value is not None:
-                    setattr(resultado, key, value)
-
-            await session.commit()
-            await session.refresh(resultado)
-            return EmpresaResponse(
-                id=resultado.id,
-                nome=resultado.nome,
-                vertente=resultado.vertente,
-                CNPJ=resultado.CNPJ,
-                endereco_id=resultado.endereco_id,
-                telefone=resultado.telefone,
-                email=resultado.email,
-                website=resultado.website,
-                status=resultado.status,
-            )
+                return EmpresaResponse(
+                    id=resultado.id,
+                    nome=resultado.nome,
+                    vertente=resultado.vertente,
+                    CNPJ=resultado.CNPJ,
+                    endereco_id=resultado.endereco_id,
+                    telefone=resultado.telefone,
+                    email=resultado.email,
+                    website=resultado.website,
+                    status=resultado.status,
+                )
         except Exception as e:
             await session.rollback()
             raise HTTPException(
@@ -601,23 +636,25 @@ async def update_endereco(input: UpdateEndereco, endereco_id: int):
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Endereço não encontrado"
                 )
-
-            input_elementos = input.model_dump()
-            for key, value in input_elementos.items():
-                if key != "id" and value is not None:
-                    setattr(resultado, key, value)
-
-            await session.commit()
-            await session.refresh(resultado)
-            return EnderecoResponse(
-                id=resultado.id,
-                rua=resultado.rua,
-                numero=resultado.numero,
-                bairro=resultado.bairro,
-                cidade=resultado.cidade,
-                estado=resultado.estado,
-                cep=resultado.cep
-            )
+            else:
+                resultado.rua=resultado.rua if input.rua is None else input.rua
+                resultado.numero=resultado.numero if input.numero is None else input.numero
+                resultado.bairro=resultado.bairro if input.bairro is None else input.bairro
+                resultado.cidade=resultado.cidade if input.cidade is None else input.cidade
+                resultado.estado=resultado.estado if input.estado is None else input.estado
+                resultado.cep=resultado.cep if input.cep is None else input.cep
+                await session.commit()
+                await session.refresh(resultado)
+                
+                return EnderecoResponse(
+                    id=resultado.id,
+                    rua=resultado.rua,
+                    numero=resultado.numero,
+                    bairro=resultado.bairro,
+                    cidade=resultado.cidade,
+                    estado=resultado.estado,
+                    cep=resultado.cep
+                )
 
         except Exception as e:
             await session.rollback()
@@ -700,21 +737,21 @@ async def update_plataforma(input: UpdatePlataforma, plataforma_id: int):
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Plataforma não encontrada"
                 )
+            else:
+                resultado.nome=resultado.nome if input.nome is None else input.nome
+                resultado.email=resultado.email if input.email is None else input.email
+                resultado.website=resultado.website if input.website is None else input.website
+                resultado.tipo=resultado.tipo if input.tipo is None else input.tipo
+                await session.commit()
+                await session.refresh(resultado)
 
-            input_elementos = input.model_dump()
-            for key, value in input_elementos.items():
-                if key != "id" and value is not None:
-                    setattr(resultado, key, value)
-
-            await session.commit()
-            await session.refresh(resultado)
-            return PlataformaResponse(
-                id=resultado.id,
-                nome=resultado.nome,
-                email=resultado.email,
-                website=resultado.website,
-                tipo=resultado.tipo
-            )
+                return PlataformaResponse(
+                    id=resultado.id,
+                    nome=resultado.nome,
+                    email=resultado.email,
+                    website=resultado.website,
+                    tipo=resultado.tipo
+                )
 
         except Exception as e:
             await session.rollback()
@@ -813,25 +850,29 @@ async def update_curso(input: UpdateCurso, curso_id: int):
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Curso não encontrada"
                 )
+            else:
+                resultado.nome=resultado.nome if input.nome is None else input.nome
+                resultado.categoria=resultado.categoria if input.categoria is None else input.categoria
+                resultado.preco=resultado.preco if input.preco is None else input.preco
+                resultado.plataforma_id=resultado.plataforma_id if input.plataforma_id is None else input.plataforma_id
+                resultado.nivel=resultado.nivel if input.nivel is None else input.nivel
+                resultado.vertente=resultado.vertente if input.vertente is None else input.vertente
+                resultado.data_inicio=resultado.data_inicio if input.data_inicio is None else input.data_inicio,
+                resultado.data_fim=resultado.data_fim if input.data_fim is None else input.data_fim,
+                await session.commit()
+                await session.refresh(resultado)
 
-            input_elementos = input.model_dump()
-            for key, value in input_elementos.items():
-                if key != "id" and value is not None:
-                    setattr(resultado, key, value)
-
-            await session.commit()
-            await session.refresh(resultado)
-            return CursoResponse(
-                id=resultado.id,
-                nome=resultado.nome,
-                categoria=resultado.categoria,
-                preco=resultado.preco,
-                plataforma_id=resultado.plataforma_id,
-                nivel=resultado.nivel,
-                vertente=resultado.vertente,
-                data_inicio=resultado.data_inicio,
-                data_fim=resultado.data_fim,
-            )
+                return CursoResponse(
+                    id=resultado.id,
+                    nome=resultado.nome,
+                    categoria=resultado.categoria,
+                    preco=resultado.preco,
+                    plataforma_id=resultado.plataforma_id,
+                    nivel=resultado.nivel,
+                    vertente=resultado.vertente,
+                    data_inicio=resultado.data_inicio,
+                    data_fim=resultado.data_fim,
+                )
 
         except Exception as e:
             await session.rollback()

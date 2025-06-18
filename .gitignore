@@ -1,5 +1,9 @@
 env
 database_config.py
+gerador_ids_aleatorios.py
+ids.csv
+monitoramento.csv
+resultados_jmeter.csv
 
 .env
 __pycache__

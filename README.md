@@ -7,6 +7,7 @@ A seguinte API tem como objetivo ser a aplicação intermediária para um site d
 * SQLAlchemy
 * Faker
 * Python-Dotenv
+* psutil 
 
 
 ### Como rodar o projeto
