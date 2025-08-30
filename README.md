@@ -10,5 +10,6 @@ A seguinte API tem como objetivo ser a aplicação intermediária para um site d
 
 
 ### Como rodar o projeto
-env/Scripts/Activate.ps1
-uvicorn main:app --reload
+1. python -m venv env
+2. env/Scripts/Activate.ps1
+3. uvicorn main:app --reload
