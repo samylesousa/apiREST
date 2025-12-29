@@ -3,7 +3,6 @@ from database_config import get_session
 from models import Empresa, Curso, Estagio, Bolsa, Professor, Plataforma, Endereco
 from sqlalchemy.future import select
 from datetime import datetime
-import os
 from schemas import (
     BolsaBase, 
     BolsaResponse,
@@ -27,9 +26,8 @@ from schemas import (
     EmpresaResponse,
     UpdateEmpresa,
 )
-app = FastAPI()
-print(f"API REST rodando com PID: {os.getpid()}")
 
+app = FastAPI()
 
 async def delete_element(elemento_id: int, model_class):
     async with get_session() as session:

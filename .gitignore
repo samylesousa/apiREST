@@ -4,6 +4,7 @@ gerador_ids_aleatorios.py
 ids.csv
 monitoramento.csv
 resultados_jmeter.csv
+monitoramento.py
 
 .env
 __pycache__
