@@ -24,3 +24,4 @@ Caso tenha interesse em analisar as outras APIs construídas para o TCC abaixo t
 > pip install requiriments.txt
 4. Rode a aplicação
 > uvicorn main:app --reload
+
